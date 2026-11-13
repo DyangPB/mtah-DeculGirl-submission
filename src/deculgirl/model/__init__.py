@@ -1,38 +1,38 @@
-"""Seat 3 (Billa) -- model sekuensial, dead-ball, dan segmentasi.
+"""Sequence model, dead-ball detection, and segmentation.
 
-Isi folder ini: dari fitur per frame menjadi label per frame.
+This package turns per-frame features into per-frame labels.
 
-BENTUK MASALAHNYA
-Ini masalah *sequence labelling*: 199.319 frame berurutan yang saling
-bergantung, dan satu label untuk setiap frame. Empat baseline di repo resmi
-memakai pendekatan per frame lalu menghaluskannya; kalian bisa melangkah lebih
-jauh dengan model yang memang melihat urutan.
+THE SHAPE OF THE PROBLEM
+This is a *sequence labelling* problem: 199,319 ordered frames that depend on
+each other, with one label per frame. The four baselines in the official repo
+label each frame independently and then smooth; you can go further with a
+model that actually sees the sequence.
 
-URUTAN PENGERJAAN -- jangan dibalik
-  1. **Dead-ball dulu** (bagian 7.1). Ini lubang terbesar di baseline, dan
-     docstring baseline-nya mengakuinya sendiri:
+ORDER OF WORK -- do not reverse it
+  1. **Dead ball first** (section 4.1). It is the biggest hole in the
+     baseline, and the baseline's own docstring admits it:
        "It has no notion of a dead ball beyond 'the tracking lost the ball',
         which is why its D class is weak."
-  2. Atribusi ``H``/``A`` untuk frame bola hidup (bagian 7.3).
-  3. Segmentasi anti-fragmentasi (bagian 7.4) -- dari probabilitas per frame jadi
-     interval.
-  4. Baru model sekuensial (bagian 7.6), dan hanya kalau mengalahkan versi aturan
-     pada confidence interval yang tidak tumpang tindih.
+  2. ``H``/``A`` attribution for live-ball frames (section 4.3).
+  3. Anti-fragmentation segmentation (section 4.4) -- from per-frame
+     probabilities to intervals.
+  4. Only then the sequence model (section 4.6), and only if it beats the
+     rule-based version with non-overlapping confidence intervals.
 
-DUA ANGKA YANG MENENTUKAN SELURUH PEKERJAAN DI FOLDER INI
-  - Scorer **tidak punya minimum panjang possession**. Satu frame dihitung
-    possession utuh. Satu serpihan = satu false positive.
-  - ``fp`` juga dihitung untuk possession kalian yang overlap dengan possession
-    asli tapi IoU-nya di bawah ambang. Jadi memecah satu possession asli jadi
-    dua menghasilkan **1 FP + 1 FN sekaligus**.
+TWO NUMBERS THAT DECIDE ALL THE WORK IN THIS PACKAGE
+  - The scorer has **no minimum possession length**. A single frame counts as
+    a full possession. One fragment = one false positive.
+  - ``fp`` is also counted for your possessions that overlap a real possession
+    but whose IoU is below the threshold. So splitting one real possession
+    into two produces **1 FP + 1 FN at once**.
 
-  Dan yang berlawanan arah, yang mudah terlewat: possession terpendek di GT
-  publik adalah **19 frame (0,76 detik)** dan itu possession SUNGGUHAN. Jadi
-  minimum spell kalian harus konservatif. Detailnya di
-  ``docs/gt-public-transitions.md`` pertanyaan 3.
+  And the opposite direction, which is easy to miss: the shortest possession
+  in the public GT is **19 frames (0.76 s)** and it is a REAL possession. So
+  your minimum spell length must be conservative. Details in
+  ``docs/gt-public-transitions.md`` question 3.
 
-ATURAN YANG TIDAK BISA DITAWAR
-  Semua label harus keluar dari algoritma. Tidak ada hand label pada
-  pertandingan ini, dalam jumlah berapa pun, untuk tujuan apa pun -- termasuk
-  untuk melatih atau memvalidasi model. Lihat ``docs/PLAYBOOK.md`` bagian 9.
+THE NON-NEGOTIABLE RULE
+  Every label must come out of an algorithm. No hand labels on this match, in
+  any amount, for any purpose -- including training or validating a model.
+  See ``docs/PLAYBOOK.md`` section 6.
 """

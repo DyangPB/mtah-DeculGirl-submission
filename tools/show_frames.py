@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Lihat isi file tracking untuk beberapa frame, dalam bentuk yang bisa dibaca manusia.
+"""Show the tracking file for a few frames, in a human-readable form.
 
     python tools/show_frames.py 12840 12900
 
-File `BAR-ATH_tactical_atd.txt` isinya 199.319 baris angka yang tidak enak dibaca
-langsung. Skrip ini menerjemahkannya jadi tabel: di setiap frame, bolanya di mana,
-seberapa cepat, sudah bergerak sejauh apa sejak frame sebelumnya, dan pemain mana
-yang paling dekat.
+The file `BAR-ATH_tactical_atd.txt` is 199,319 lines of numbers that are hard to
+read directly. This script turns it into a table: for each frame, where the ball
+is, how fast it is moving, how far it moved since the previous frame, and which
+player is closest.
 
-Gunanya untuk Seat 1: menjawab "kenapa frame ini bola mati?" tanpa membuka video.
-Cukup lihat: apakah bolanya diam? Apakah pemainnya berhenti? Apakah bolanya hilang?
+Its purpose is to answer "why is this frame a dead ball?" without opening the
+video. Just look: is the ball still? Have the players stopped? Is the ball
+missing?
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-# Windows: konsol default (cp1252) tidak bisa mencetak karakter non-ASCII.
+# Windows: the default console (cp1252) cannot print non-ASCII characters.
 for _stream in (sys.stdout, sys.stderr):
     try:
         _stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
@@ -32,27 +33,27 @@ RAW = DATA_TACTICAL / "BAR-ATH_tactical_atd.txt"
 META = DATA_TACTICAL / "BAR-ATH_tactical_atd.xml"
 
 FPS = 25
-PITCH = (105.3, 68.0)      # meter, sama seperti games.py repo resmi
-MISSING = "N"              # huruf pertama dari "NaN"
+PITCH = (105.3, 68.0)      # metres, same as the official repo's games.py
+MISSING = "N"              # first letter of "NaN"
 HOME, AWAY = 0, 1
 
 
 def team_of_each_track(meta_path: Path) -> list[int]:
-    """Untuk setiap slot track: 0 kalau tim home, 1 kalau tim away.
+    """For each track slot: 0 for the home team, 1 for the away team.
 
-    Cara bacanya sama persis dengan `starter/baseline.py` di repo resmi: elemen
-    <Team> pertama di file adalah tim home (konvensi FIFA/EPTS).
+    Read exactly like `starter/baseline.py` in the official repo: the first
+    <Team> element in the file is the home team (FIFA/EPTS convention).
     """
     root = ET.parse(meta_path).getroot()
     ids = [t.get("id") for t in root.iter("Team")]
     if len(ids) != 2:
-        raise ValueError(f"{meta_path}: harusnya 2 tim, ketemu {len(ids)}")
+        raise ValueError(f"{meta_path}: expected 2 teams, found {len(ids)}")
     home_id = ids[0]
     return [HOME if p.get("teamId") == home_id else AWAY for p in root.iter("Player")]
 
 
 def parse_group(text: str) -> tuple[float, float, float] | None:
-    """'x,y,speed' -> (x, y, speed). None kalau grup itu kosong/NaN."""
+    """'x,y,speed' -> (x, y, speed). None if the group is empty/NaN."""
     if not text or text[0] == MISSING:
         return None
     pieces = text.split(",")
@@ -69,38 +70,38 @@ def parse_group(text: str) -> tuple[float, float, float] | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("mulai", type=int, help="frame awal (0-based, seperti di submission)")
-    parser.add_argument("selesai", type=int, nargs="?", default=None,
-                        help="frame akhir (default: 60 frame setelah 'mulai')")
+    parser.add_argument("start", type=int, help="first frame (0-based, as in the submission)")
+    parser.add_argument("end", type=int, nargs="?", default=None,
+                        help="last frame (default: 60 frames after 'start')")
     args = parser.parse_args()
 
-    awal = args.mulai
-    akhir = args.selesai if args.selesai is not None else awal + 59
+    first = args.start
+    last = args.end if args.end is not None else first + 59
 
     if not RAW.exists():
         print(
-            f"File tracking belum ada di:\n  {RAW}\n\n"
-            "Pakai nama file yang persis seperti aslinya, dan taruh di folder itu.\n",
+            f"Tracking file not found at:\n  {RAW}\n\n"
+            "Use the exact original file name and put it in that folder.\n",
             file=sys.stderr,
         )
         return 1
     if not META.exists():
-        print(f"File metadata belum ada di:\n  {META}\n", file=sys.stderr)
+        print(f"Metadata file not found at:\n  {META}\n", file=sys.stderr)
         return 1
 
-    tim = team_of_each_track(META)
-    panjang, lebar = PITCH
-    nama_tim = {HOME: "Barcelona", AWAY: "Athletic"}
+    teams = team_of_each_track(META)
+    length, width = PITCH
+    team_names = {HOME: "Barcelona", AWAY: "Athletic"}
 
     print()
-    print(f"Frame {awal:,} sampai {akhir:,}   ({awal/FPS:.1f}s sampai {akhir/FPS:.1f}s)")
-    print("Frame di file itu 1-based, jadi kita mulai baca dari baris ke-", awal + 1)
+    print(f"Frames {first:,} to {last:,}   ({first/FPS:.1f}s to {last/FPS:.1f}s)")
+    print("Frames in the file are 1-based, so reading starts at line", first + 1)
     print()
-    print("  frame   bola_x  bola_y   kec     geser   n   pemain terdekat")
+    print("  frame   ball_x  ball_y  speed   moved   n   nearest player")
     print("  ------  ------  ------  ------  ------  ---  ----------------------")
 
-    sebelumnya: tuple[float, float] | None = None
-    baris_tercetak = 0
+    previous: tuple[float, float] | None = None
+    rows_printed = 0
 
     with RAW.open() as handle:
         for line in handle:
@@ -112,68 +113,68 @@ def main() -> int:
             except ValueError:
                 continue
 
-            if id_frame > akhir + 1:
+            if id_frame > last + 1:
                 break
 
-            bola = parse_group(parts[2])
-            frame = id_frame - 1     # id_frame 1-based -> video frame 0-based
+            ball = parse_group(parts[2])
+            frame = id_frame - 1     # id_frame is 1-based -> video frame is 0-based
 
-            if awal <= frame <= akhir:
-                if bola is None:
+            if first <= frame <= last:
+                if ball is None:
                     print(f"  {frame:>6,}  {'--':>6}  {'--':>6}  {'--':>6}  {'--':>6}  "
-                          f"{'nd':>3}  BOLA TIDAK TERDETEKSI")
-                    sebelumnya = None
-                    baris_tercetak += 1
+                          f"{'n/a':>3}  BALL NOT DETECTED")
+                    previous = None
+                    rows_printed += 1
                     continue
 
-                bx, by, kecepatan = bola
-                mx = bx * panjang
-                my = by * lebar
+                bx, by, speed = ball
+                mx = bx * length
+                my = by * width
 
-                if sebelumnya is None:
-                    geser = "--"
+                if previous is None:
+                    moved = "--"
                 else:
-                    px, py = sebelumnya
-                    d = ((bx - px) * panjang) ** 2 + ((by - py) * lebar) ** 2
-                    geser = f"{d ** 0.5:.2f}"
+                    px, py = previous
+                    d = ((bx - px) * length) ** 2 + ((by - py) * width) ** 2
+                    moved = f"{d ** 0.5:.2f}"
 
-                pemain = parts[1].split(";")
-                terdekat_jarak = None
-                terdekat_tim = None
-                terdekat_slot = None
-                hidup = 0
+                players = parts[1].split(";")
+                nearest_distance = None
+                nearest_team = None
+                nearest_slot = None
+                tracked = 0
 
-                for slot, grup in enumerate(pemain):
-                    p = parse_group(grup)
+                for slot, group in enumerate(players):
+                    p = parse_group(group)
                     if p is None:
                         continue
-                    hidup += 1
-                    px_ = p[0] * panjang
-                    py_ = p[1] * lebar
-                    jarak = ((px_ - mx) ** 2 + (py_ - my) ** 2) ** 0.5
-                    if terdekat_jarak is None or jarak < terdekat_jarak:
-                        terdekat_jarak = jarak
-                        terdekat_tim = tim[slot] if slot < len(tim) else None
-                        terdekat_slot = slot + 1
+                    tracked += 1
+                    px_ = p[0] * length
+                    py_ = p[1] * width
+                    distance = ((px_ - mx) ** 2 + (py_ - my) ** 2) ** 0.5
+                    if nearest_distance is None or distance < nearest_distance:
+                        nearest_distance = distance
+                        nearest_team = teams[slot] if slot < len(teams) else None
+                        nearest_slot = slot + 1
 
-                if terdekat_jarak is None:
-                    info = "tidak ada pemain terdeteksi"
+                if nearest_distance is None:
+                    info = "no player detected"
                 else:
-                    timnya = nama_tim.get(terdekat_tim, "?")
-                    info = f"{timnya} (slot {terdekat_slot}, {terdekat_jarak:.1f} m)"
+                    team_name = team_names.get(nearest_team, "?")
+                    info = f"{team_name} (slot {nearest_slot}, {nearest_distance:.1f} m)"
 
-                print(f"  {frame:>6,}  {bx:>6.3f}  {by:>6.3f}  {kecepatan:>6.2f}  "
-                      f"{geser:>6}  {hidup:>3}  {info}")
-                sebelumnya = (bx, by)
-                baris_tercetak += 1
+                print(f"  {frame:>6,}  {bx:>6.3f}  {by:>6.3f}  {speed:>6.2f}  "
+                      f"{moved:>6}  {tracked:>3}  {info}")
+                previous = (bx, by)
+                rows_printed += 1
 
     print()
-    if baris_tercetak == 0:
-        print("  Tidak ada frame di rentang itu yang terbaca dari file.")
-        print(f"  File-nya berisi berapa baris? Cek dulu -- harusnya 199.319.")
+    if rows_printed == 0:
+        print("  No frame in that range could be read from the file.")
+        print("  How many lines does the file have? Check first -- it should be 199,319.")
     else:
-        print("  Bacanya: 'geser' adalah berapa meter bola berpindah sejak frame sebelumnya.")
-        print("  Bola diam (geser 0.00 terus) hampir selalu berarti bola mati.")
+        print("  How to read it: 'moved' is how many metres the ball travelled since the previous frame.")
+        print("  A ball that stays still (moved 0.00 repeatedly) almost always means a dead ball.")
     print()
     return 0
 

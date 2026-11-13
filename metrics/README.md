@@ -1,52 +1,43 @@
-# metrics/ — Seat 4 (Yona)
+# metrics/
 
-Alat ukur, regression suite (uji untuk menangkap kemunduran hasil), dan alat diagnosa.
+Measurement tools, a regression suite (tests that catch results getting worse), and diagnostic tools.
 
-## Kenapa folder ini ada
+## Why this folder exists
 
-> Kunci peringkat kompetisi ini ada di tangan kalian: **scorer yang kalian jalankan di komputer sendiri
-> adalah scorer yang menentukan peringkat.** Kata `EVALUATION.md`:
+> The key to the ranking in this competition is in your hands: **the scorer you run on your own computer
+> is the scorer that decides the ranking.** In the words of `EVALUATION.md`:
 > *"Organisers run this exact script against the private full-match ground truth; the published board
-> is its output. There is no stricter version held back."* (Penyelenggara menjalankan skrip yang persis
-> sama terhadap ground truth pertandingan penuh yang dirahasiakan; papan skor yang diterbitkan adalah
-> keluarannya. Tidak ada versi yang lebih ketat yang disembunyikan.)
+> is its output. There is no stricter version held back."*
 
-Ini keuntungan besar, tetapi hanya berguna kalau dipakai dengan disiplin. Folder ini yang menjaga
-disiplin itu.
+This is a big advantage, but it is only useful if it is used with discipline. This folder is what keeps
+that discipline.
 
-## Isi yang direncanakan
+It is also the path that must not break: if nobody can run this folder, nobody can reproduce the
+submission file, and that disqualifies the entry rather than merely costing points. So build it early,
+**freeze** it once it is green, and **automate** its checks through CI.
 
-| File | Gunanya |
+## Planned contents
+
+| File | Purpose |
 |---|---|
-| `regression.py` | Menjalankan sekumpulan submission dan membandingkannya dengan hasil terakhir yang diketahui. Menangkap kemunduran yang tidak disadari |
-| `compare.py` | Membandingkan dua versi dengan `--bootstrap 1000`, lalu melaporkan apakah intervalnya tumpang tindih. **Alat ini mencegah kalian menipu diri sendiri** |
-| `diagnose.py` | Meringkas `reports/<nama>_transitions.csv` dari evaluator resmi: mana yang `matched` (cocok), `missed` (terlewat), dan `spurious` (palsu) |
-| `ci.py` | Menjalankan pemeriksaan yang sama dengan `.github/workflows/validate.yml`, tetapi di komputer lokal |
+| `regression.py` | Runs a set of submissions and compares them with the last known result. Catches regressions you did not notice |
+| `compare.py` | Compares two versions with `--bootstrap 1000`, then reports whether the intervals overlap. **This tool stops you from fooling yourself** |
+| `diagnose.py` | Summarises `reports/<name>_transitions.csv` from the official evaluator: which are `matched`, `missed`, and `spurious` |
+| `ci.py` | Runs the same checks as `.github/workflows/validate.yml`, but on the local machine |
 
-## Tiga aturan pengukuran
+## Three measurement rules
 
-1. **Batas noise pertandingan penuh: `spellF1` ≈ 0,04 · `macroF1` ≈ 0,01.**
-   Selisih di bawah itu bukan kemajuan. Jangan dirayakan dan jangan dikejar.
-2. **Selalu jalankan `--bootstrap 1000` sebelum percaya bahwa satu versi lebih baik.**
-   Biasanya intervalnya tumpang tindih. Kalau tumpang tindih, pilih versi yang lebih sederhana dan
-   berhenti di situ.
-3. **Jendela publik 5 menit bukan leaderboard.** Isinya hanya 17 possession, dan satu possession yang
-   meleset ≈ 6 poin. `EVALUATION.md` membuktikan bahwa menyetel parameter di situ memilih baseline yang
-   salah. Pakai hanya untuk memastikan pipeline **benar**: nomor frame selaras, file sesuai format yang
-   diminta, dan label berarti apa yang kalian kira.
+1. **Noise band on the full match: `spellF1` ≈ 0.04 · `macroF1` ≈ 0.01.**
+   A difference below that is not progress. Do not celebrate it and do not chase it.
+2. **Always run `--bootstrap 1000` before believing that one version is better.**
+   Usually the intervals overlap. If they overlap, pick the simpler version and stop there.
+3. **The 5-minute public window is not a leaderboard.** It has only 17 possessions, and one missed
+   possession ≈ 6 points. `EVALUATION.md` proves that tuning parameters there picks the wrong baseline.
+   Use it only to confirm that the pipeline is **correct**: frame numbers are aligned, the file follows
+   the requested format, and labels mean what you think they mean.
 
-## Satu hal yang jarang diketahui orang
+## One thing few people know
 
-Evaluator resmi menulis `reports/<nama>_transitions.csv`, yaitu daftar setiap transisi beserta statusnya
-(`matched` / `missed` / `spurious`) untuk setiap video frame. Itu alat debug terbaik yang tersedia, dan
-gratis. Gunakan `diagnose.py` untuk membacanya.
-
-## Kepemilikan
-
-Seat 4 adalah **jalur yang tidak boleh terputus**. Kalau tidak ada yang bisa menjalankan folder ini,
-tidak ada yang bisa mereproduksi file submission, dan itu membuat tim gugur, bukan sekadar kurang
-nilai.
-
-Karena itu: bangun berpasangan di Gate 0, **bekukan** setelah hijau, dan **otomatiskan** pemeriksaannya
-lewat CI. Setelah dibekukan, beban rutinnya kecil, dan ketidakhadiran satu orang tidak lagi menjadi
-risiko bagi tim.
+The official evaluator writes `reports/<name>_transitions.csv`, a list of every transition together with
+its status (`matched` / `missed` / `spurious`) for every video frame. It is the best debugging tool
+available, and it is free. Use `diagnose.py` to read it.

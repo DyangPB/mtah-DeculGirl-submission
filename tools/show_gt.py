@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Tunjukkan 5 menit contoh jawaban — supaya kelihatan apa yang harus ditebak.
+"""Show the 5 minutes of example answers -- so it is clear what has to be guessed.
 
     python tools/show_gt.py
 
-Ini SATU-SATUNYA contoh jawaban yang kita punya: 5 menit pertama permainan,
-lengkap dengan jawaban benarnya. Menampilkan 21 segmen di dalamnya — 17 possession
-dan 4 blok bola mati.
+This is the ONLY example of answers we have: the first 5 minutes of play, with
+the correct answers. It lists the 21 segments in it -- 17 possessions and 4
+dead-ball blocks.
 
-Gunanya: pekerjaan Seat 1 bukan "membangun model". Pekerjaanmu adalah melihat
-transisi ke `D` di tabel ini, membuka file tracking di sekitar frame itu, dan
-menjawab pertanyaan "kenapa frame ini bola mati?" — lalu menuliskannya sebagai
-aturan yang bisa dikodekan.
+Why it exists: the work is not "building a model". The work is to look at the
+transitions into `D` in this table, open the tracking file around those frames,
+and answer "why is this frame a dead ball?" -- then write the answer down as a
+rule that can be coded.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pandas as pd
 
-# Windows: konsol default (cp1252) tidak bisa mencetak karakter non-ASCII.
+# Windows: the default console (cp1252) cannot print non-ASCII characters.
 for _stream in (sys.stdout, sys.stderr):
     try:
         _stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
@@ -32,13 +32,13 @@ GT = (ROOT / "third_party" / "mtah2027" / "evaluation" / "gt"
       / "BAR-ATH_possession_gt_public.csv")
 
 FPS = 25
-ARAH = {"H": "H  Barcelona menguasai", "A": "A  Athletic menguasai", "D": "D  BOLA MATI"}
+LABEL_TEXT = {"H": "H  Barcelona in possession", "A": "A  Athletic in possession", "D": "D  DEAD BALL"}
 
 
 def main() -> int:
     if not GT.exists():
         print(
-            "File contoh jawaban belum ada.\n\n"
+            "The example-answer file is not present yet.\n\n"
             "  python tools/fetch_official.py\n",
             file=sys.stderr,
         )
@@ -46,59 +46,59 @@ def main() -> int:
 
     df = pd.read_csv(GT, dtype={"label": str})
 
-    dinilai = df[df["label"] != "X"]
-    if dinilai.empty:
-        print("file contoh jawaban tidak berisi frame yang dinilai.", file=sys.stderr)
+    graded = df[df["label"] != "X"]
+    if graded.empty:
+        print("the example-answer file contains no graded frames.", file=sys.stderr)
         return 1
 
-    pertama = int(dinilai["frame"].iloc[0])
-    terakhir = int(dinilai["frame"].iloc[-1])
+    first_frame = int(graded["frame"].iloc[0])
+    last_frame = int(graded["frame"].iloc[-1])
 
-    jendela = df[(df["frame"] >= pertama) & (df["frame"] <= terakhir)]
-    frames = jendela["frame"].to_numpy()
-    labels = jendela["label"].to_numpy()
+    window = df[(df["frame"] >= first_frame) & (df["frame"] <= last_frame)]
+    frames = window["frame"].to_numpy()
+    labels = window["label"].to_numpy()
 
-    detik_jendela = len(labels) / FPS
+    window_seconds = len(labels) / FPS
     print()
-    print(f"Contoh jawaban: frame {pertama:,} sampai {terakhir:,}")
-    print(f"  {len(labels):,} frame dinilai  =  {detik_jendela:.0f} detik  =  {detik_jendela/60:.1f} menit")
-    print(f"  di luar jendela ini, semua jawabannya 'X' (tidak dinilai)")
+    print(f"Example answers: frame {first_frame:,} to {last_frame:,}")
+    print(f"  {len(labels):,} graded frames  =  {window_seconds:.0f} seconds  =  {window_seconds/60:.1f} minutes")
+    print(f"  outside this window, every answer is 'X' (not graded)")
     print()
-    print("  #   label  frame mulai   frame akhir    durasi   waktu mulai")
+    print("  #   label  start frame   end frame      length   start time")
     print("  --- ----- -------------  -------------  -------  -----------")
 
-    segmen: list[tuple[str, int, int, int]] = []
-    awal = 0
+    segments: list[tuple[str, int, int, int]] = []
+    start = 0
     for i in range(1, len(labels) + 1):
-        if i == len(labels) or labels[i] != labels[awal]:
-            segmen.append((labels[awal], int(frames[awal]), int(frames[i - 1]), i - awal))
-            awal = i
+        if i == len(labels) or labels[i] != labels[start]:
+            segments.append((labels[start], int(frames[start]), int(frames[i - 1]), i - start))
+            start = i
 
-    for nomor, (label, mulai, akhir, panjang) in enumerate(segmen, start=1):
-        detik = mulai / FPS
-        menit = int(detik // 60)
-        sisa = detik - menit * 60
-        tanda = " <<<" if label == "D" else ""
+    for number, (label, seg_start, seg_end, length) in enumerate(segments, start=1):
+        seconds = seg_start / FPS
+        minutes = int(seconds // 60)
+        remainder = seconds - minutes * 60
+        marker = " <<<" if label == "D" else ""
         print(
-            f"  {nomor:>3} {ARAH[label]:<24} {mulai:>7,}  {akhir:>13,}"
-            f"  {panjang/FPS:>6.1f}s  {menit:>2}:{sisa:04.1f}{tanda}"
+            f"  {number:>3} {LABEL_TEXT[label]:<27} {seg_start:>7,}  {seg_end:>13,}"
+            f"  {length/FPS:>6.1f}s  {minutes:>2}:{remainder:04.1f}{marker}"
         )
 
-    possession = [s for s in segmen if s[0] in ("H", "A")]
-    mati = [s for s in segmen if s[0] == "D"]
+    possessions = [s for s in segments if s[0] in ("H", "A")]
+    dead = [s for s in segments if s[0] == "D"]
 
     print()
-    print(f"  {len(segmen)} segmen: {len(possession)} possession dan {len(mati)} blok bola mati.")
-    print(f"  Rata-rata {sum(s[3] for s in possession)/len(possession)/FPS:.1f} detik per possession."
-          f"  Yang terpendek {min(s[3] for s in possession)/FPS:.2f} detik.")
+    print(f"  {len(segments)} segments: {len(possessions)} possessions and {len(dead)} dead-ball blocks.")
+    print(f"  Average {sum(s[3] for s in possessions)/len(possessions)/FPS:.1f} seconds per possession."
+          f"  The shortest is {min(s[3] for s in possessions)/FPS:.2f} seconds.")
     print()
-    print("  Empat blok bertanda <<< itulah pertanyaanmu. Untuk masing-masing:")
-    print("    1. Buka data/tactical/BAR-ATH_tactical_atd.txt di sekitar frame itu.")
-    print("    2. Tanya: apa yang beda di situ? Bola hilang? Bola diam? Pemain berhenti?")
-    print("    3. Tulis jawabannya di docs/possession-rules.md sebagai aturan yang bisa dikodekan.")
+    print("  The four blocks marked <<< are the question. For each of them:")
+    print("    1. Open data/tactical/BAR-ATH_tactical_atd.txt around that frame.")
+    print("    2. Ask: what is different there? Ball missing? Ball still? Players stopped?")
+    print("    3. Write the answer in docs/possession-rules.md as a rule that can be coded.")
     print()
-    print("  Kalau kamu bisa menjelaskan kenapa 4 blok itu 'D' tanpa melihat video dan tanpa")
-    print("  mengingat pertandingannya, kamu sudah melakukan pekerjaan Seat 1.")
+    print("  If you can explain why those 4 blocks are 'D' without watching the video and")
+    print("  without recalling the match, you have done the domain work.")
     print()
     return 0
 

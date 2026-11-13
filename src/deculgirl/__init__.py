@@ -1,82 +1,82 @@
-"""Konstanta pertandingan dan kontrak submission.
+"""Match constants and the submission contract.
 
-Semua angka di sini berasal dari repo resmi penyelenggara pada commit
-``f8f2629``. Kalau ada yang bertentangan dengan repo resmi, **repo resmi yang
-benar** -- lalu perbarui file ini.
+Every number here comes from the organisers' official repo at commit
+``f8f2629``. If anything conflicts with the official repo, **the official repo
+is right** -- then update this file.
 
-Istilahnya ada di ``GLOSSARY.md`` di root repo. Pakai istilah dari sana di
-kode dan di dokumen, supaya tidak ada ambiguitas "possession" vs "spell".
+Terminology lives in ``GLOSSARY.md`` at the repo root. Use the terms from
+there in code and docs, so "possession" vs "spell" never becomes ambiguous.
 """
 
 from __future__ import annotations
 
-# --- Bentuk pertandingan ----------------------------------------------------
+# --- Shape of the match -----------------------------------------------------
 
-#: Jumlah frame video taktis. Ini juga jumlah baris data yang wajib ada
-#: di file submission -- selalu, tidak peduli apa pun.
+#: Number of tactical-video frames. This is also the exact number of data rows
+#: a submission file must have -- always, no matter what.
 N_VIDEO_FRAMES = 199_319
 
-#: Frame per detik. 25 baris tracking = 1 detik.
+#: Frames per second. 25 tracking rows = 1 second.
 FPS = 25
 
-#: Ukuran pitch dalam meter, dari ``games.py`` repo resmi.
-#: (Metadata menulis 105.0 x 68.0; selisih 30 cm itu cuma penting kalau
-#: kalian menghitung jarak meter. Baseline resmi memakai angka ini.)
+#: Pitch size in metres, from the official repo's ``games.py``.
+#: (The metadata says 105.0 x 68.0; the 30 cm difference only matters if you
+#: compute distances in metres. The official baseline uses this value.)
 PITCH_M = (105.3, 68.0)
 
-# --- Kontrak label ----------------------------------------------------------
+# --- Label contract ---------------------------------------------------------
 
-#: Satu-satunya label yang sah. Tidak ada yang lain, dalam bentuk apa pun.
+#: The only valid labels. Nothing else, in any form.
 LABELS = ("H", "A", "D", "X")
 
-#: Label yang dihitung sebagai possession oleh spellF1. ``D`` adalah stoppage,
-#: ``X`` bukan state.
+#: Labels that spellF1 counts as a possession. ``D`` is a stoppage and ``X``
+#: is not a state.
 POSSESSION_LABELS = ("H", "A")
 
-# --- Frame yang dinilai -----------------------------------------------------
+# --- Graded frames ----------------------------------------------------------
 #
-# Rentang half-open [start, stop), persis seperti ``valid_runs()`` di repo
-# resmi: (11185, 90652) dan (110808, 190198).
+# Half-open ranges [start, stop), exactly like ``valid_runs()`` in the official
+# repo: (11185, 90652) and (110808, 190198).
 #
-# CATATAN PENTING: babak 2 dinilai mulai frame 110.808, tapi kick-off-nya baru
-# 113.742 -- jadi 2.934 frame pertama babak 2 dinilai dan SEMUANYA ``D``.
-# Ini diterbitkan resmi di FAQ.md, bukan tebakan. Kalau kalian memakainya
-# untuk mengkalibrasi detektor dead-ball, cantumkan sumbernya di dokumen
-# teknis (RULES.md melarang konstanta hasil pengamatan sendiri).
+# IMPORTANT: the second half is graded from frame 110,808, but its kick-off is
+# only at 113,742 -- so the first 2,934 frames of the second half are graded
+# and ALL of them are ``D``. This is published officially in FAQ.md, it is not
+# a guess. If you use it to calibrate a dead-ball detector, cite the source in
+# the technical document (RULES.md forbids constants derived from your own
+# observation).
 GRADED_RUNS = ((11_185, 90_652), (110_808, 190_198))
 
-#: Di luar rentang di atas, label kalian tidak berpengaruh sama sekali:
-#: macroF1 hanya menghitung frame yang dinilai, dan spellF1 hanya menyusun
-#: possession di dalam rentang yang dinilai.
+#: Outside the ranges above your labels have no effect at all: macroF1 only
+#: counts graded frames, and spellF1 only builds possessions inside the graded
+#: ranges.
 N_GRADED_FRAMES = 158_857
 
-# --- Jendela ground truth publik --------------------------------------------
+# --- Public ground-truth window ---------------------------------------------
 
-#: Satu-satunya ground truth yang kita pegang. Untuk memverifikasi bahwa
-#: pipeline BENAR -- bukan untuk ranking, bukan data latih, bukan set tuning.
+#: The only ground truth we hold. Use it to verify that the pipeline is
+#: CORRECT -- not for ranking, not as training data, not as a tuning set.
 PUBLIC_GT_RUNS = ((11_185, 18_685),)
 PUBLIC_GT_FRAMES = 7_500
 PUBLIC_GT_POSSESSIONS = 17
 
-# --- Kalibrasi: jarak antar-babak -------------------------------------------
+# --- Calibration: offsets between sources -----------------------------------
 
-#: ``video_frame = id_frame - 1`` untuk ATD.
+#: ``video_frame = id_frame - 1`` for ATD.
 ID_FRAME_OFFSET = 1
 
-#: Offset jarak antar babak di Smart Tagging, dari ``games.py``.
-#: Kedua babak berbeda satu frame, jadi tidak ada satu offset tunggal yang
-#: eksak.
+#: Per-half offsets for Smart Tagging, from ``games.py``.
+#: The two halves differ by one frame, so no single exact offset exists.
 FRAME_OFFSETS = {1: 1_702_057, 2: 1_702_058}
 
-# --- Ambang metrik ----------------------------------------------------------
+# --- Metric thresholds ------------------------------------------------------
 #
-# Jangan dibandingkan di bawah angka ini; itu noise, bukan kemajuan.
+# Do not compare below these numbers; that is noise, not progress.
 
-#: Noise band spellF1 pada pertandingan penuh.
+#: spellF1 noise band on the full match.
 SPELL_F1_NOISE = 0.04
 
-#: Noise band macroF1.
+#: macroF1 noise band.
 MACRO_F1_NOISE = 0.01
 
-#: Lantai yang harus dilewati: baseline_smooth50 pada pertandingan penuh.
+#: The floor to beat: baseline_smooth50 on the full match.
 BASELINE_FLOOR_SPELL_F1 = 0.2433

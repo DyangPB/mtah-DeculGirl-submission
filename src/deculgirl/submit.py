@@ -1,53 +1,53 @@
 """data -> CSV submission.
 
-KONTRAK ``build_labels()``
---------------------------
-- mengembalikan array numpy 1-D berisi string, panjangnya **tepat**
+THE ``build_labels()`` CONTRACT
+-------------------------------
+- returns a 1-D numpy array of strings, of length **exactly**
   ``deculgirl.N_VIDEO_FRAMES``
-- setiap elemen harus salah satu dari ``"H"``, ``"A"``, ``"D"``, ``"X"``
-- indeks ``i`` adalah ``video_frame`` bernilai ``i`` (0-based)
-- tidak boleh ada elemen kosong -- tulis ``"X"`` untuk abstain
+- every element must be one of ``"H"``, ``"A"``, ``"D"``, ``"X"``
+- index ``i`` is ``video_frame`` ``i`` (0-based)
+- no empty elements -- write ``"X"`` to abstain
 
-Kalau kontrak ini dilanggar, ``validate_submission.py`` menolak file dan
-submission kalian **dinilai nol**. Itu penyebab kegagalan paling umum di
-kompetisi ini.
+If this contract is broken, ``validate_submission.py`` rejects the file and the
+submission is **scored zero**. It is the most common cause of failure in this
+competition.
 
 
 ===========================================================================
-STATUS: FAIL-SAFE, BELUM CERDAS.
+STATUS: FAIL-SAFE, NOT SMART YET.
 ===========================================================================
 
-Yang berjalan sekarang adalah **baseline resmi** (pemain tracked terdekat ke
-bola + voting mayoritas), diimpor langsung dari
-``third_party/mtah2027/starter/baseline.py``. Itu bukan curang dan bukan
-kemalasan: kode itu MIT, dan penyelenggara sendiri menyebutnya *"a starting
-point, not a constraint"* -- sekaligus cara tercepat punya submission valid.
+What runs right now is the **official baseline** (nearest tracked player to the
+ball + majority voting), imported directly from
+``third_party/mtah2027/starter/baseline.py``. That is neither cheating nor
+laziness: the code is MIT, and the organisers themselves call it *"a starting
+point, not a constraint"* -- and it is the fastest way to have a valid
+submission.
 
-Ini asuransi kalian. Begitu data turun dan ``python run.py`` jalan, kalian
-sudah memegang submission yang berskor (±0,32 di jendela publik, 0,2433 di
-pertandingan penuh). **Jangan pernah menghapus keadaan ini.** Setiap perbaikan
-ditambahkan sebagai varian, dan `main` selalu bisa menghasilkan submission
-yang valid.
+It is your insurance. Once the data is in place and ``python run.py`` works,
+you already hold a scoring submission (about 0.32 on the public window, 0.2433
+on the full match). **Never remove this state.** Every improvement is added as
+a variant, and `main` can always produce a valid submission.
 
-CARA MENGGANTINYA -- GATE 1, satu pilar sekaligus
--------------------------------------------------
-Ganti ``build_labels()`` supaya memanggil pipeline kalian sendiri, lalu
-kerjakan empat pilar di ``src/deculgirl/features/`` dan ``src/deculgirl/model/``
-(lihat ``docs/PLAYBOOK.md`` bagian 7):
+HOW TO REPLACE IT -- one pillar at a time
+-----------------------------------------
+Change ``build_labels()`` to call your own pipeline, then work on the four
+pillars in ``src/deculgirl/features/`` and ``src/deculgirl/model/`` (see
+``docs/PLAYBOOK.md`` section 4):
 
-  1. Deteksi dead-ball   -- pilar bernilai tertinggi. Baseline tidak punya
-                            logika dead ball sama sekali
-  2. Imputasi bola       -- bola hilang di 41% frame yang dinilai
-  3. Atribusi tim        -- lebih kaya dari "pemain terdekat"
-  4. Segmentasi          -- jangan memecah possession jadi serpihan
+  1. Dead-ball detection -- the highest-value pillar. The baseline has no
+                            dead-ball logic at all
+  2. Ball imputation     -- the ball is missing in 41% of graded frames
+  3. Team attribution    -- richer than "nearest player"
+  4. Segmentation        -- do not split possessions into fragments
 
-Aturan yang tidak boleh dilanggar di file ini: **tidak ada label yang boleh
-berasal dari tangan manusia.** Semua label harus keluar dari algoritma. Tidak
-untuk submission, tidak untuk melatih model, tidak untuk memvalidasi.
-Lihat ``docs/PLAYBOOK.md`` bagian 9.
+The rule that must not be broken in this file: **no label may come from a
+human hand.** Every label must come out of an algorithm. Not for the
+submission, not for training a model, not for validating one.
+See ``docs/PLAYBOOK.md`` section 6.
 
-Ingat juga: label di luar ``GRADED_RUNS`` tidak berpengaruh apa pun pada skor.
-Jangan buang waktu menyempurnakan jeda babak.
+Also remember: labels outside ``GRADED_RUNS`` have no effect on the score.
+Do not waste time perfecting the half-time break.
 """
 
 from __future__ import annotations
@@ -59,100 +59,118 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from . import LABELS, N_VIDEO_FRAMES
+from . import GRADED_RUNS, LABELS, N_VIDEO_FRAMES
 
 ROOT = Path(__file__).resolve().parents[2]
 OFFICIAL = ROOT / "third_party" / "mtah2027"
 
-#: Di mana bundle pertandingan ditaruh. Sama dengan konvensi repo resmi:
-#: variabel lingkungan ``MTAH_DATA_DIR`` menang, kalau tidak ada pakai
-#: ``data/`` di root repo ini.
+#: Where the match bundle lives. Same convention as the official repo: the
+#: ``MTAH_DATA_DIR`` environment variable wins; otherwise use ``data/`` at the
+#: root of this repo.
 DEFAULT_DATA_DIR = Path(os.environ.get("MTAH_DATA_DIR") or (ROOT / "data"))
 
-#: Half-width window voting mayoritas, dalam frame. 50 = jendela +/- 2 detik,
-#: dan itu konfigurasi yang menghasilkan lantai yang diterbitkan (spellF1
-#: 0,2433 di pertandingan penuh).
+#: Half-width of the majority-voting window, in frames. 50 = a +/- 2 second
+#: window, and it is the configuration that produces the published floor
+#: (spellF1 0.2433 on the full match).
 #:
-#: JANGAN tuning angka ini di jendela publik 5 menit. EVALUATION.md
-#: membuktikan bahwa tuning di situ memilih nilai yang SALAH: window 125
-#: menang di publik (0,4242) tapi kalah di pertandingan penuh (0,2242).
+#: DO NOT tune this number on the 5-minute public window. EVALUATION.md proves
+#: that tuning there picks the WRONG value: window 125 wins on the public
+#: window (0.4242) but loses on the full match (0.2242).
 DEFAULT_WINDOW = 50
 
 
 def _load_official_baseline():
-    """Impor ``starter/baseline.py`` dari repo resmi.
+    """Import ``starter/baseline.py`` from the official repo.
 
-    Diimpor, bukan disalin, supaya kalau kalian memperbarui repo resmi
-    (``tools/fetch_official.py --force``) kalian juga mendapat perbaikan
-    mereka -- dan supaya jelas bahwa yang berjalan di sini adalah kode mereka,
-    bukan rekaan kita. Lisensinya MIT.
+    Imported, not copied, so that when you update the official repo
+    (``tools/fetch_official.py --force``) you also get their fixes -- and so it
+    is clear that what runs here is their code, not something we made up.
+    Licence: MIT.
     """
     starter = OFFICIAL / "starter"
     if not starter.is_dir():
         raise FileNotFoundError(
-            f"Repo resmi tidak ada di {OFFICIAL}.\n"
-            "  jalankan dulu:  python tools/fetch_official.py"
+            f"Official repo not found at {OFFICIAL}.\n"
+            "  run this first:  python tools/fetch_official.py"
         )
-    # baseline.py sendiri menambahkan root repo resmi ke sys.path saat diimpor;
-    # kita tambahkan keduanya supaya urutannya tidak bergantung padanya.
+    # baseline.py itself adds the official repo root to sys.path when imported;
+    # we add both so the order does not depend on it.
     for path in (OFFICIAL, starter):
         if str(path) not in sys.path:
             sys.path.insert(0, str(path))
 
-    import baseline  # noqa: PLC0415  (sengaja: impornya butuh sys.path di atas)
+    import baseline  # noqa: PLC0415  (deliberate: the import needs the sys.path above)
 
     return baseline
 
 
 def build_labels(data_dir: Path | str | None = None, window: int = DEFAULT_WINDOW) -> np.ndarray:
-    """Membangun satu label untuk setiap frame video.
+    """Build one label for every video frame.
 
-    Ini fungsi yang kalian ganti di Gate 1. Kontraknya ada di docstring modul.
+    This is the function to replace as the pipeline grows. The contract is in
+    the module docstring.
     """
     baseline = _load_official_baseline()
     codes = baseline.build(data_dir=str(data_dir or DEFAULT_DATA_DIR))
-    return baseline.smooth(codes, window)
+    labels = baseline.smooth(codes, window)
+    return _abstain_outside_graded(labels)
+
+
+def _abstain_outside_graded(labels: np.ndarray) -> np.ndarray:
+    """Write ``X`` for every frame outside ``GRADED_RUNS``.
+
+    Possession rules section 5: outside the graded window there is nothing to
+    answer, and the scorer ignores those frames. This does not change the
+    score; it only makes the file say "no answer" where there is none, instead
+    of the baseline's default ``D``.
+    """
+    labels = np.array(labels, dtype="<U1")
+    graded = np.zeros(len(labels), dtype=bool)
+    for start, stop in GRADED_RUNS:
+        graded[start:stop] = True
+    labels[~graded] = "X"
+    return labels
 
 
 def build_placeholder() -> np.ndarray:
-    """Submission legal yang tidak menjawab apa pun. Skornya 0,0000.
+    """A legal submission that answers nothing. Its score is 0.0000.
 
-    Gunanya cuma satu: membuktikan rantai ``build -> write -> validate ->
-    score`` tersambung SEBELUM data pertandingan kalian ada. Jangan pernah
-    ini yang disubmit.
+    It has exactly one purpose: to prove that the ``build -> write -> validate
+    -> score`` chain is connected BEFORE the match data is available. Never
+    submit this.
 
-    Perhatikan: file ini tetap **lolos validasi**. Itu pelajaran yang layak
-    dilihat sekali -- validitas file dan kebenaran isinya dua hal yang
-    berbeda, dan scorer hanya menghukum yang kedua.
+    Note that this file still **passes validation**. That is worth seeing
+    once -- a valid file and correct contents are two different things, and
+    the scorer only punishes the second.
     """
     return np.full(N_VIDEO_FRAMES, "X", dtype="<U1")
 
 
 def write_submission(labels: np.ndarray, path: Path | str) -> None:
-    """Menulis file submission sesuai kontrak, lalu memeriksanya sendiri.
+    """Write the submission file to the contract, then check it.
 
-    Jangan ubah fungsi ini. Kalau ada yang salah dengan bentuk filenya, itu
-    bug di ``build_labels()``, bukan di sini.
+    Do not change this function. If the shape of the file is wrong, that is a
+    bug in ``build_labels()``, not here.
     """
     labels = np.asarray(labels)
 
     if labels.ndim != 1:
-        raise ValueError(f"labels harus 1-D, dapat {labels.ndim}-D")
+        raise ValueError(f"labels must be 1-D, got {labels.ndim}-D")
     if len(labels) != N_VIDEO_FRAMES:
-        raise ValueError(f"labels harus {N_VIDEO_FRAMES} elemen, dapat {len(labels)}")
+        raise ValueError(f"labels must have {N_VIDEO_FRAMES} elements, got {len(labels)}")
 
     labels = np.char.upper(np.char.strip(labels.astype(str)))
 
     empty = int(np.sum(labels == ""))
     if empty:
         raise ValueError(
-            f"{empty} label kosong. Sel kosong ditolak validator -- tulis 'X' "
-            "untuk abstain, jangan biarkan kosong."
+            f"{empty} empty labels. The validator rejects empty cells -- write "
+            "'X' to abstain, do not leave them empty."
         )
 
     bad = sorted(set(labels.tolist()) - set(LABELS))
     if bad:
-        raise ValueError(f"label di luar {list(LABELS)}: {bad[:5]}")
+        raise ValueError(f"labels outside {list(LABELS)}: {bad[:5]}")
 
     frame = pd.DataFrame(
         {
@@ -164,7 +182,7 @@ def write_submission(labels: np.ndarray, path: Path | str) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    # newline="" + lineterminator="\n": pastikan filenya identik di Windows dan
-    # Linux. Reproducibility itu syarat penilaian, bukan bonus.
+    # newline="" + lineterminator="\n": make sure the file is identical on
+    # Windows and Linux. Reproducibility is a grading requirement, not a bonus.
     with open(path, "w", newline="", encoding="utf-8") as handle:
         frame.to_csv(handle, index=False, lineterminator="\n")

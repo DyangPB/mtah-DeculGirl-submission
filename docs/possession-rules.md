@@ -1,236 +1,236 @@
-# Aturan Possession — DeculGirl
+# Possession Rules — DeculGirl
 
-**Pemilik: Seat 1 (Dyang)** · Ditinjau oleh: Seat 3 (Billa) · Status: `DRAFT`
+Status: `DRAFT`
 
-> Ini dokumen terpenting di repo ini. Tugasnya hanya satu: **memindahkan pemahaman tentang sepak bola
-> dari kepala Dyang ke dalam repo**, supaya Billa bisa membuat kodenya tanpa harus bertanya lagi.
+> This is the most important document in this repo. It has one job: **move the understanding of football
+> out of one head and into the repo**, so that the code can be written without anyone having to ask
+> again.
 >
-> Kalau Billa masih harus bertanya "maksudnya apa?", berarti dokumen ini belum selesai. Penyebabnya
-> bukan Billa kurang paham, melainkan kalimatnya belum cukup jelas.
+> If a reader still has to ask "what does this mean?", the document is not finished. The cause is not
+> that the reader is slow, but that the sentence is not clear enough.
 
-**Cara mengisi:** setiap aturan harus bisa ditulis dalam bentuk `jika ... maka ...`, dan setiap aturan
-harus punya nomor. Nomor itu dipakai di pesan commit dan di `docs/decisions.md`, sehingga kalau ada
-yang berubah, kita tahu persis apa yang berubah.
+**How to fill it in:** every rule must be writable in the form `if ... then ...`, and every rule must
+have a number. That number is used in commit messages and in `docs/decisions.md`, so when something
+changes we know exactly what changed.
 
 ---
 
-## 1. Ruang lingkup
+## 1. Scope
 
-Hanya ada tiga keadaan. Tidak ada "diperebutkan", tidak ada "peralihan", dan tidak ada "tidak diketahui".
+There are only three states. There is no "contested", no "transition", and no "unknown".
 
-| Label | Definisi yang bisa diterapkan dalam kode |
+| Label | Definition that can be applied in code |
 |---|---|
-| `H` | Barcelona menguasai bola **dan** bola hidup |
-| `A` | Athletic menguasai bola **dan** bola hidup |
-| `D` | Bola mati |
+| `H` | Barcelona has the ball **and** the ball is live |
+| `A` | Athletic has the ball **and** the ball is live |
+| `D` | Dead ball |
 
-`X` bukan keadaan keempat. `X` adalah keputusan sistem untuk tidak menjawab. Lihat bagian 5.
+`X` is not a fourth state. `X` is the system's decision not to answer. See section 5.
 
-**Yang sengaja tidak ditanyakan:** siapa yang memegang bola saat bola mati. Data tracking tetap
-menyebut satu tim saat bola keluar lapangan (misalnya tim yang akan memulai kembali permainan, atau
-tim yang terakhir menyentuh bola). Namun ground truth membuang informasi itu. Saat bola mati, jawabannya
-`D`. Titik.
-
----
-
-## 2. Arti "bola hidup" dan "bola mati"
-
-> **Status bagian ini: HIPOTESIS.** R-2.1 dan R-2.2 berasal dari pemahaman umum tentang sepak bola,
-> belum diverifikasi ke data tracking, karena bundle ATD belum diunduh. Verifikasinya: buka tracking di
-> sekitar tiap blok `D` pada GT publik (lihat `docs/gt-public-transitions.md`), lalu ubah atau buang
-> aturan yang tidak cocok. Semua angka ambang ada di tabel parameter di akhir bagian 6.
-
-**R-2.1** Jika bola terdeteksi, bergerak dengan kecepatan di atas `v_diam`, dan ada pemain dalam
-jarak `d_kontrol` darinya atau sedang bergerak antar pemain, maka bola **hidup**.
-
-**R-2.2** Bola **mati** jika salah satu syarat ini terpenuhi:
-
-- (a) posisi bola berada di luar batas lapangan (di luar rentang koordinat 0–1) → `D`
-- (b) kecepatan bola di bawah `v_diam` selama sedikitnya `T_diam` frame berturut-turut, dan pemain
-  di sekitarnya bergerak pelan atau tersebar (ciri bola dipasang untuk tendangan bebas, gawang, atau
-  lemparan) → `D`
-
-Bola yang tidak terdeteksi **bukan** bukti bola mati. Lihat R-5.1.
-
-**R-2.3** ⚠️ **Bola mati tidak selalu sebentar.** Di 5 menit GT publik ada tiga bola mati yang
-berlangsung **20,4 detik**, **18,3 detik**, dan **14,5 detik**, dengan total 17,7% dari jendela yang
-dinilai. Lemparan ke dalam yang normal hanya 5–8 detik, jadi bola mati sepanjang itu kemungkinan besar
-karena cedera, pergantian pemain, atau pemeriksaan VAR. Aturan apa pun yang berbunyi "bola akan segera
-hidup kembali" **salah**, dan akan merusak tiga momen yang paling mencolok di jendela itu.
-
-**R-2.4** Bobot tiap kelas: `H` 46%, `A` 34%, `D` 20% dari frame yang dinilai. Kelas `D` hanya **4
-segmen** dari 21, tetapi berisi 1.469 frame. Artinya, satu kesalahan pada `D` merusak **tiga**
-possession sekaligus: dua yang terpotong dan satu yang muncul begitu saja. Perlakukan `D` sebagai kelas
-dengan risiko tertinggi.
+**What is deliberately not asked:** who holds the ball during a dead ball. The tracking data still names
+one team when the ball goes out of play (for example the team that will restart play, or the team that
+touched it last). But the ground truth throws that information away. During a dead ball the answer is
+`D`. Full stop.
 
 ---
 
-## 3. Arti "menguasai bola"
+## 2. What "live ball" and "dead ball" mean
 
-`CHALLENGE.md` mengakui bahwa bagian ini kurang jelas, dan menawarkan dua pendekatan:
+> **Status of this section: HYPOTHESIS.** R-2.1 and R-2.2 come from general understanding of football,
+> and have not been verified against the tracking data, because the ATD bundle had not been downloaded.
+> How to verify: open the tracking around each `D` block of the public GT (see
+> `docs/gt-public-transitions.md`), then change or drop the rules that do not match. All threshold
+> numbers are in the parameter table at the end of section 6.
 
-- pemain menahan bola selama beberapa detik
-- satu tim menyelesaikan lebih dari dua operan berturut-turut
+**R-2.1** If the ball is detected, moving faster than `v_still`, and a player is within `d_control` of
+it or it is moving between players, then the ball is **live**.
 
-**R-3.1** Kami memilih definisi pertama: **pemain menahan bola**. Definisi "lebih dari dua operan"
-ditolak karena butuh mendeteksi operan, dan itu berarti membangun data event, yang tidak kita punya.
+**R-2.2** The ball is **dead** if either of these conditions holds:
 
-Satu tim **menguasai** bola pada sebuah frame jika:
+- (a) the ball's position is outside the pitch boundary (outside the 0–1 coordinate range) → `D`
+- (b) the ball's speed is below `v_still` for at least `T_still` consecutive frames, and the players
+  around it are moving slowly or are spread out (a sign the ball has been set for a free kick, goal
+  kick, or throw-in) → `D`
 
-- pemain terdekat ke bola berasal dari tim itu, **dan**
-- jaraknya ke bola `<= d_kontrol`, **dan**
-- kondisi itu bertahan sedikitnya `K_kontrol` frame berturut-turut.
+A ball that is not detected is **not** evidence of a dead ball. See R-5.1.
 
-Jarak dihitung dalam meter (koordinat 0–1 dikali ukuran lapangan 105,3 × 68,0). Untuk membandingkan dua
-tim, pakai jarak 2–3 pemain terdekat dari tiap tim, bukan hanya satu pemain terdekat secara keseluruhan.
-Pemain yang bergerak **menuju** bola lebih diutamakan daripada yang kebetulan lewat.
+**R-2.3** ⚠️ **A dead ball is not always short.** In the 5 minutes of public GT there are three dead
+balls that last **20.4 seconds**, **18.3 seconds**, and **14.5 seconds**, making up 17.7% of the graded
+window. A normal throw-in lasts only 5–8 seconds, so a dead ball that long is most likely due to an
+injury, a substitution, or a VAR check. Any rule that says "the ball will soon be live again" is
+**wrong**, and would damage the three most conspicuous moments in that window.
 
-**R-3.2** Yang **bukan** pergantian possession (dari `CHALLENGE.md`):
+**R-2.4** Weight of each class: `H` 46%, `A` 34%, `D` 20% of graded frames. Class `D` is only **4
+segments** out of 21, but contains 1,469 frames. This means one mistake on `D` damages **three**
+possessions at once: the two that get cut and the one that appears out of nowhere. Treat `D` as the
+class with the highest risk.
 
-- sentuhan sekilas tanpa kontrol
-- operan yang hanya membelok (defleksi) tanpa berhasil dipotong
-- duel udara yang dimenangkan tanpa kontrol lanjutan oleh tim yang menang
+---
 
-**R-3.3** Dari data tracking, ketiga hal itu tidak selalu bisa dikenali.
+## 3. What "having the ball" means
 
-| Hal | Bisa dikenali? | Yang dilakukan sistem |
+`CHALLENGE.md` admits that this part is not very clear, and offers two approaches:
+
+- a player holds the ball for a few seconds
+- one team completes more than two consecutive passes
+
+**R-3.1** We chose the first definition: **a player holds the ball**. The "more than two passes"
+definition is rejected because it requires detecting passes, and that means building event data, which
+we do not have.
+
+A team **has** the ball in a frame if:
+
+- the player nearest to the ball is from that team, **and**
+- their distance to the ball is `<= d_control`, **and**
+- that condition holds for at least `K_control` consecutive frames.
+
+Distance is computed in metres (0–1 coordinates times the pitch size 105.3 × 68.0). To compare two
+teams, use the distance of the 2–3 nearest players of each team, not just the single nearest player
+overall. A player moving **towards** the ball is preferred over one who just happens to pass by.
+
+**R-3.2** What is **not** a change of possession (from `CHALLENGE.md`):
+
+- a fleeting touch with no control
+- a pass that is only deflected without being intercepted
+- an aerial duel won without follow-up control by the winning team
+
+**R-3.3** From tracking data, these three things cannot always be recognised.
+
+| Thing | Recognisable? | What the system does |
 |---|---|---|
-| Sentuhan sekilas | Sebagian. Kontaknya lebih pendek dari `K_kontrol` | Diabaikan oleh R-3.1 |
-| Defleksi | Sebagian. Bola lewat dengan kecepatan tinggi tanpa melambat | Tidak dihitung sebagai kontrol |
-| Duel udara | **Tidak.** Koordinat bola tidak menyimpan ketinggian | Label lama dipertahankan (R-4.1) sampai bukti tim baru bertahan `N_pindah` frame |
+| Fleeting touch | Partly. The contact is shorter than `K_control` | Ignored by R-3.1 |
+| Deflection | Partly. The ball passes at high speed without slowing | Not counted as control |
+| Aerial duel | **No.** Ball coordinates do not store height | The old label is kept (R-4.1) until there is evidence the new team has held for `N_switch` frames |
 
-Dengan kata lain: sistem tidak berusaha mengenali duel udara. Ia hanya menolak berpindah terlalu cepat.
-
----
-
-## 4. Possession harus bertahan
-
-Possession adalah **keadaan yang bertahan**, bukan keputusan yang dibuat terpisah di setiap frame.
-Sebuah frame berlabel `H` sebagian besar karena frame sebelumnya `H`.
-
-**R-4.1** Jika tidak ada bukti yang cukup dari tim lawan, maka label **tetap sama** dengan frame
-sebelumnya, tanpa batas waktu. Possession tidak berakhir karena waktu, hanya karena bukti tim lawan
-(R-4.2) atau bola mati (R-2.2). Saat dua tim berimbang jaraknya (selisih di bawah `margin_jarak`),
-pemilik sebelumnya dipertahankan.
-
-**R-4.2** Jika kandidat dari tim lawan (menurut R-3.1) muncul **terus-menerus selama `N_pindah`
-frame**, maka label berpindah. Satu frame atau beberapa frame yang terputus tidak cukup. `N_pindah`
-harus **di bawah 19**, karena possession asli terpendek di GT publik adalah 19 frame.
-
-**R-4.3** Saat perpindahan sudah terkonfirmasi oleh R-4.2, awal possession baru **dimundurkan ke frame
-pertama dari rangkaian bukti**, bukan ke frame konfirmasi. Tanpa ini, setiap perpindahan terlambat
-`N_pindah` frame, dan possession pendek (misalnya 19 frame) kehilangan separuh isinya sehingga IoU-nya
-jatuh di bawah ambang. Ini aman karena pemrosesan dilakukan offline atas seluruh pertandingan.
+In other words: the system does not try to recognise aerial duels. It only refuses to switch too
+quickly.
 
 ---
 
-## 5. Kebijakan `X`
+## 4. Possession must persist
 
-Scorer mengganti setiap `X` dengan label terakhir yang bukan `X` **di babak yang sama**, sebelum
-possession disusun. Jadi `H H H X X X H H H` dihitung sebagai **satu** possession `H` sepanjang sembilan
-frame.
+A possession is a **state that persists**, not a decision made separately in every frame. A frame is
+labelled `H` mostly because the previous frame was `H`.
 
-**`X` bukan tombol menyerah. `X` adalah tombol "sama seperti sebelumnya".**
+**R-4.1** If there is not enough evidence from the opposing team, then the label **stays the same** as
+the previous frame, with no time limit. A possession does not end because of time, only because of
+evidence from the opposing team (R-4.2) or a dead ball (R-2.2). When the two teams are about equally
+close (a difference below `distance_margin`), the previous owner is kept.
 
-| Situasi | Tindakan | Alasan |
+**R-4.2** If a candidate from the opposing team (per R-3.1) appears **continuously for `N_switch`
+frames**, then the label switches. One frame, or a few interrupted frames, is not enough. `N_switch`
+must be **below 19**, because the shortest real possession in the public GT is 19 frames.
+
+**R-4.3** When a switch has been confirmed by R-4.2, the start of the new possession is **moved back to
+the first frame of the run of evidence**, not to the confirmation frame. Without this, every switch is
+late by `N_switch` frames, and a short possession (for example 19 frames) loses half of its content so
+that its IoU falls below the threshold. This is safe because processing is done offline over the whole
+match.
+
+---
+
+## 5. The `X` policy
+
+The scorer replaces every `X` with the last non-`X` label **in the same half**, before possessions are
+built. So `H H H X X X H H H` counts as **one** `H` possession nine frames long.
+
+**`X` is not a give-up button. `X` is the "same as before" button.**
+
+| Situation | Action | Reason |
 |---|---|---|
-| Bola hilang **di tengah** possession | `X` | Tidak merugikan. Possession tetap utuh. Lebih aman daripada tebakan yang bisa memecahnya |
-| Saat **possession berpindah ke tim lawan** | **Wajib menebak** | `X` menarik label lama ke wilayah tim lawan, dan itu sangat merugikan |
-| Di luar jendela yang dinilai (frame < 11.185, jeda, > 190.197) | `X` | Sama sekali tidak dihitung |
+| Ball missing **in the middle of** a possession | `X` | Costs nothing. The possession stays whole. Safer than a guess that could split it |
+| When **possession switches to the opposing team** | **Must guess** | `X` pulls the old label into the opposing team's territory, and that is very costly |
+| Outside the graded window (frame < 11,185, breaks, > 190,197) | `X` | Not counted at all |
 
-**R-5.1** Sistem tahu ia di tengah possession atau saat berpindah dengan **membandingkan dua ujung
-celah** (periode bola tidak terdeteksi):
+**R-5.1** The system knows whether it is in the middle of a possession or at a switch by **comparing the
+two ends of the gap** (a period where the ball is not detected):
 
-- Ambil pemilik **sebelum** celah (`T_sebelum`) dan kandidat pertama **sesudah** celah (`T_sesudah`).
-- Jika `T_sebelum == T_sesudah` → tulis `X` untuk seluruh celah. Itu di tengah possession.
-- Jika `T_sebelum != T_sesudah` → perpindahan terjadi **di dalam** celah. Wajib menebak. Sementara,
-  frame di paruh pertama celah diberi `T_sebelum` dan paruh kedua `T_sesudah` (titik tengah celah).
-- Jika salah satu ujung tidak punya pemilik (misalnya awal babak) → tulis `X`.
+- Take the owner **before** the gap (`T_before`) and the first candidate **after** the gap (`T_after`).
+- If `T_before == T_after` → write `X` for the whole gap. That is the middle of a possession.
+- If `T_before != T_after` → the switch happened **inside** the gap. Must guess. For now, frames in the
+  first half of the gap get `T_before` and the second half get `T_after` (the midpoint of the gap).
+- If either end has no owner (for example the start of a half) → write `X`.
 
-Titik tengah adalah tebakan paling lemah di dokumen ini. Dicatat di bagian 7 supaya diperbaiki lebih
-dulu begitu ada data posisi pemain sekitar celah yang bisa dipakai.
+The midpoint is the weakest guess in this document. It is noted in section 7 so that it is fixed first
+once there is player-position data around the gap that can be used.
 
-**R-5.2** Catatan biaya: `macroF1` menghitung `X` sebagai salah, tetapi `macroF1` hanya pemutus kalau
-seri. `spellF1`, yang menentukan peringkat, tidak pernah melihatnya. Jadi `X` itu murah, dan tidak ada
-alasan untuk pelit memakainya.
+**R-5.2** A note on cost: `macroF1` counts `X` as wrong, but `macroF1` is only the tiebreaker.
+`spellF1`, which decides the ranking, never sees it. So `X` is cheap, and there is no reason to be
+stingy with it.
 
 ---
 
-## 6. Panjang minimum possession ⚠️
+## 6. Minimum possession length ⚠️
 
-**Temuan yang bisa langsung menyelamatkan skor kalian:**
+**A finding that can directly save the score:**
 
-> Possession terpendek di GT publik adalah **19 frame (0,76 detik)**, dan itu possession **yang
-> sungguhan**. Possession terpendek kedua adalah 33 frame (1,32 detik).
+> The shortest possession in the public GT is **19 frames (0.76 seconds)**, and it is a **real**
+> possession. The second shortest is 33 frames (1.32 seconds).
 
-Scorer **tidak** menggabungkan possession yang pendek. Kalau kalian memasang batas minimum yang agresif,
-misalnya "gabungkan apa pun yang di bawah 1 detik" atau "buang yang di bawah 30 frame", kalian akan
-**menghapus possession yang memang ada**. Satu possession yang hilang ≈ **6 poin** `spellF1` di jendela
-ini.
+The scorer does **not** merge short possessions. If you set an aggressive minimum, for example "merge
+anything under 1 second" or "drop anything under 30 frames", you will **delete possessions that really
+exist**. One lost possession ≈ **6 points** of `spellF1` on this window.
 
-Sebagai perbandingan, `baseline_raw` melaporkan **131 possession** untuk 5 menit ini, padahal yang benar
-**17**.
+For comparison, `baseline_raw` reports **131 possessions** for these 5 minutes, when the correct number
+is **17**.
 
-**R-6.1** Batas minimum panjang possession yang kami pilih: **12 frame (0,48 detik)**. Alasan: harus
-jauh di bawah 19 frame supaya possession pendek yang nyata tidak terhapus, tetapi cukup besar untuk
-membuang kedipan 1–5 frame akibat pemain yang kebetulan lewat.
+**R-6.1** The minimum possession length we chose: **12 frames (0.48 seconds)**. Reason: it must be well
+below 19 frames so that real short possessions are not erased, but large enough to remove 1–5 frame
+flickers caused by a player who just happens to pass by.
 
-**R-6.2** Potongan yang lebih pendek dari batas itu **digabung**, bukan dibuang, dan hanya jika
-diapit dua possession dari tim yang sama (pola `H A H` menjadi `H H H`). Jika diapit tim yang berbeda
-atau oleh `D`, potongan itu **dibiarkan**.
+**R-6.2** Fragments shorter than that limit are **merged**, not dropped, and only if they are sandwiched
+between two possessions of the same team (the pattern `H A H` becomes `H H H`). If sandwiched by a
+different team or by `D`, the fragment is **left alone**.
 
-**R-6.3** Penggabungan **tidak boleh melintasi tim**. Dua possession `H` dan `A` yang bersebelahan
-tidak pernah digabung. Pada pola `H A H`, yang berubah hanya potongan `A` yang pendek. Bola mati `D`
-tidak pernah diubah.
+**R-6.3** Merging **must not cross teams**. Two adjacent `H` and `A` possessions are never merged. In
+the pattern `H A H`, only the short `A` fragment changes. A dead ball `D` is never changed.
 
-**Tabel parameter.** Semua angka di bawah ini adalah **titik awal berbasis penalaran, belum
-diverifikasi**. Jangan disetel memakai skor 5 menit publik (hanya 17 possession; satu possession
-meleset ≈ 6 poin). Verifikasi dengan pemeriksaan yang tidak butuh jawaban benar: jumlah possession
-yang dilaporkan (baseline melaporkan 131 untuk 5 menit; yang benar 17), jumlah potongan di bawah 19
-frame, dan perpindahan `H → A` yang tidak didukung data.
+**Parameter table.** Every number below is a **starting point based on reasoning, not yet verified**.
+Do not tune them using the 5-minute public score (only 17 possessions; one missed possession ≈ 6
+points). Verify with checks that do not need the correct answer: the number of possessions reported
+(the baseline reports 131 for 5 minutes; the correct number is 17), the number of fragments under 19
+frames, and `H → A` switches that the data does not support.
 
-| Parameter | Titik awal | Dipakai di | Dasar |
+| Parameter | Starting point | Used in | Basis |
 |---|---|---|---|
-| `d_kontrol` | ±2 m | R-2.1, R-3.1 | Jangkauan wajar pemain mengontrol bola. Perlu dilihat di data |
-| `K_kontrol` | 5 frame (0,2 detik) | R-3.1 | Menyaring sentuhan sekilas |
-| `N_pindah` | 10 frame (0,4 detik) | R-4.2 | Harus < 19 |
-| `margin_jarak` | ±1 m | R-4.1 | Di bawah ini dianggap berimbang |
-| `v_diam` | ±1 m/s | R-2.1, R-2.2 | Bola nyaris diam. Cek ke blok `D` pada GT |
-| `T_diam` | 25 frame (1 detik) | R-2.2 | Membedakan bola diam sungguhan dari jeda sesaat |
-| `min_possession` | 12 frame | R-6.1 | Harus jauh < 19 |
+| `d_control` | ±2 m | R-2.1, R-3.1 | A reasonable reach for a player controlling the ball. Needs checking in the data |
+| `K_control` | 5 frames (0.2 s) | R-3.1 | Filters fleeting touches |
+| `N_switch` | 10 frames (0.4 s) | R-4.2 | Must be < 19 |
+| `distance_margin` | ±1 m | R-4.1 | Below this counts as level |
+| `v_still` | ±1 m/s | R-2.1, R-2.2 | Ball nearly still. Check against the `D` blocks in the GT |
+| `T_still` | 25 frames (1 s) | R-2.2 | Separates a truly still ball from a momentary pause |
+| `min_possession` | 12 frames | R-6.1 | Must be well < 19 |
 
 ---
 
-## 7. Kasus yang belum diputuskan
+## 7. Undecided cases
 
-Setiap kali Billa menemukan keadaan yang tidak tercakup di atas, **jangan berimprovisasi di kode**.
-Tulis dulu di sini, lalu putuskan bersama.
+Whenever a situation comes up that is not covered above, **do not improvise in the code**. Write it down
+here first, then decide.
 
-| # | Kasus | Contoh frame | Keputusan | Tanggal |
+| # | Case | Example frame | Decision | Date |
 |---|---|---|---|---|
-| 1 | Perpindahan tim terjadi di dalam celah bola hilang: di mana batasnya? | *(cari di data)* | Sementara titik tengah celah (R-5.1). **Belum diputuskan**; diperbaiki lebih dulu | 26 Okt 2026 |
-| 2 | Duel udara: tidak bisa dikenali dari koordinat | *(cari di data)* | Tidak dikenali; dipertahankan lewat R-4.1 dan R-4.2 | 26 Okt 2026 |
-| 3 | Dua tim berimbang jaraknya ke bola | *(cari di data)* | Pertahankan pemilik sebelumnya (R-4.1) | 26 Okt 2026 |
-| 4 | Awal babak atau setelah bola mati: belum ada pemilik sebelumnya | *(cari di data)* | Pakai kandidat pertama yang memenuhi R-3.1 | 26 Okt 2026 |
-| 5 | Bola mati yang panjang (14–20 detik) dengan bola masih terdeteksi | *(cari di GT publik)* | **Belum diputuskan.** R-2.2(b) mungkin tidak menangkapnya; periksa dulu di data | 26 Okt 2026 |
+| 1 | The team switch happens inside a ball-missing gap: where is the boundary? | *(find in the data)* | For now the midpoint of the gap (R-5.1). **Not decided**; to be improved first | 26 Oct 2026 |
+| 2 | Aerial duel: cannot be recognised from coordinates | *(find in the data)* | Not recognised; kept through R-4.1 and R-4.2 | 26 Oct 2026 |
+| 3 | The two teams are equally close to the ball | *(find in the data)* | Keep the previous owner (R-4.1) | 26 Oct 2026 |
+| 4 | Start of a half or after a dead ball: no previous owner yet | *(find in the data)* | Use the first candidate that satisfies R-3.1 | 26 Oct 2026 |
+| 5 | A long dead ball (14–20 seconds) with the ball still detected | *(find in the public GT)* | **Not decided.** R-2.2(b) may not catch it; check in the data first | 26 Oct 2026 |
 
 ---
 
-## 8. Batas kepatuhan
+## 8. Compliance limits
 
-Aturan di dokumen ini **tidak boleh** berasal dari:
+The rules in this document **must not** come from:
 
-- ❌ ingatan siapa pun tentang pertandingan Barça–Athletic yang asli
-- ❌ laporan pertandingan, berita, atau ringkasan apa pun
-- ❌ data event dari penyedia mana pun (Opta, StatsBomb, Wyscout, LaLiga, atau siapa pun)
-- ❌ anotasi manual pada frame mana pun
+- ❌ anyone's memory of the real Barça–Athletic match
+- ❌ any match report, news article, or summary
+- ❌ event data from any provider (Opta, StatsBomb, Wyscout, LaLiga, or anyone else)
+- ❌ manual annotation of any frame
 
-Sumber yang **boleh**: **data tracking, Smart Tagging, dan homography yang diberikan · 5 menit GT publik ·
-pemahaman umum tentang cara kerja sepak bola.**
+Sources that **are allowed**: **the supplied tracking data, Smart Tagging, and homography · the 5 minutes
+of public GT · general understanding of how football works.**
 
-Kalau ada aturan yang terasa "berasal dari ingatan", catat di `docs/decisions.md` dan tanyakan lewat
-issue resmi sebelum dipakai. `FAQ.md` mengundang hal itu secara terbuka:
+If a rule feels like it "comes from memory", note it in `docs/decisions.md` and ask through the
+official issue before using it. `FAQ.md` openly invites this:
 
 > *"If a rule is unclear or your approach sits near a line, ask before you build on it."*
-> (Kalau sebuah aturan kurang jelas atau pendekatanmu mendekati batas, bertanyalah sebelum kamu
-> membangun di atasnya.)

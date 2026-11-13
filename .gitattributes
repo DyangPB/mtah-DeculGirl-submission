@@ -1,16 +1,17 @@
-# Line ending yang seragam untuk semua orang.
+# Consistent line endings for everyone.
 #
-# Kenapa ini ada: kalian di Windows, CI-nya di Linux. Tanpa aturan ini, git
-# menulis ulang akhir baris setiap kali file berpindah mesin, dan itu muncul
-# sebagai "warning: LF will be replaced by CRLF" yang bikin berisik -- lalu
-# perlahan berubah jadi diff palsu yang menyulitkan review PR.
+# Why this exists: contributors may be on Windows while CI runs on Linux.
+# Without this rule, git rewrites line endings every time a file moves between
+# machines. That shows up as noisy "warning: LF will be replaced by CRLF"
+# messages and slowly turns into fake diffs that make PR review harder.
 #
-# Reproducibility file submission TIDAK bergantung pada file ini: CSV-nya
-# ditulis dengan `newline=""` dan `lineterminator="\n"` di `submit.py`, jadi
-# hasilnya identik di Windows maupun Linux. Ini soal ketenangan kerja sehari-hari.
+# Reproducibility of the submission file does NOT depend on this file: the CSV
+# is written with `newline=""` and `lineterminator="\n"` in `submit.py`, so the
+# result is identical on Windows and Linux. This is about day-to-day peace of
+# mind.
 * text=auto eol=lf
 
-# File yang isinya memang binary -- jangan pernah disentuh git.
+# Files that really are binary -- git must never touch them.
 *.mp4 binary
 *.png binary
 *.jpg binary

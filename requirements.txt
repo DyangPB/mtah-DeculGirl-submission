@@ -1,23 +1,23 @@
-# Dependensi DeculGirl — di-pin supaya reproduksi tidak pernah berubah.
+# DeculGirl dependencies -- pinned so that reproduction never changes.
 #
-# Aturan: SELALU pakai versi persis (==). Kalau kamu menambah atau menaikkan
-# versi, tulis alasannya di docs/decisions.md. File submission yang bisa
-# direproduksi adalah syarat penilaian, bukan bonus.
+# Rule: ALWAYS use exact versions (==). If you add or bump a version, write the
+# reason in docs/decisions.md. A reproducible submission file is a grading
+# requirement, not a bonus.
 
-# --- Inti: dibutuhkan untuk data dan submission ------------------------------
+# --- Core: needed for the data and the submission ----------------------------
 numpy==1.26.4
 pandas==2.2.2
 
-# --- Penilaian: dibutuhkan oleh scorer dan validator resmi -------------------
-# (repo resmi cuma butuh numpy + pandas; dicantumkan terpisah biar jelas)
-# lihat: third_party/mtah2027/requirements.txt
+# --- Scoring: needed by the official scorer and validator --------------------
+# (the official repo only needs numpy + pandas; listed separately for clarity)
+# see: third_party/mtah2027/requirements.txt
 
-# --- Fitur dan model: tambahkan saat dipakai, jangan sebelumnya ---------------
+# --- Features and model: add when used, not before ---------------------------
 # scikit-learn==1.4.2
 # scipy==1.13.1
 
-# --- Opsional dari repo resmi, hanya kalau kalian membuka notebook -----------
-# Catatan: di Windows, Jupyter dengan Python 3.8 gagal build pywinpty.
-# Python 3.9+ aman. Kita pakai 3.10+.
+# --- Optional from the official repo, only if you open the notebooks ---------
+# Note: on Windows, Jupyter with Python 3.8 fails to build pywinpty.
+# Python 3.9+ is fine. We use 3.10+.
 # kloppy==3.18.0
 # matplotlib==3.8.4

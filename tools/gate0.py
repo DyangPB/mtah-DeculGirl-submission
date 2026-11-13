@@ -1,29 +1,29 @@
 #!/usr/bin/env python3
-"""Validasi dan skor file submission, memakai alat resmi.
+"""Validate and score a submission file, using the official tools.
 
     python tools/gate0.py
     python tools/gate0.py --file results/DeculGirl_v2.csv
-    python tools/gate0.py --bootstrap 1000     # interval kepercayaan
+    python tools/gate0.py --bootstrap 1000     # confidence interval
 
-GATE INI TIDAK BUTUH DATA PERTANDINGAN. Skornya dihitung pada 5 menit ground
-truth publik yang ada di dalam repo resmi, jadi ia bisa jalan sejak menit
-pertama kalian memulai -- sebelum bundle data turun.
+THIS GATE DOES NOT NEED THE MATCH DATA. The score is computed on the 5 minutes
+of public ground truth that ship inside the official repo, so it can run from
+the very first minute -- before the data bundle is downloaded.
 
-APA YANG DILAKUKANNYA
-  1. Menjalankan ``evaluation/validate_submission.py`` -- **pemeriksaan yang
-     persis sama** dengan yang dijalankan scorer resmi. File yang gagal di
-     sini akan dinilai nol kalau disubmit.
-  2. Menjalankan ``evaluation/run_evaluation.py`` -- scorer resminya.
+WHAT IT DOES
+  1. Runs ``evaluation/validate_submission.py`` -- **exactly the same check**
+     that the official scorer runs. A file that fails here is scored zero if
+     submitted.
+  2. Runs ``evaluation/run_evaluation.py`` -- the official scorer.
 
-PERINGATAN YANG WAJIB DIINGAT
-  Angka dari gate ini dihitung pada **17 possession**. Satu possession meleset
-  menggerakkan spellF1 sekitar **6 poin**. ``EVALUATION.md`` membuktikan bahwa
-  menuning di jendela ini memilih baseline yang SALAH: ``smooth125`` menang di
-  sini (0,4242) tapi kalah di pertandingan penuh (0,2242).
+A WARNING TO ALWAYS REMEMBER
+  The numbers from this gate are computed on **17 possessions**. One missed
+  possession moves spellF1 by about **6 points**. ``EVALUATION.md`` proves that
+  tuning on this window picks the WRONG baseline: ``smooth125`` wins here
+  (0.4242) but loses on the full match (0.2242).
 
-  Jadi: pakai gate ini untuk memverifikasi bahwa pipeline kalian **benar**
-  (frame selaras, file sesuai kontrak, labelnya berarti apa yang kalian kira).
-  Jangan pakai untuk memilih versi.
+  So: use this gate to verify that your pipeline is **correct** (frames
+  aligned, file follows the contract, labels mean what you think they mean).
+  Do not use it to choose between versions.
 """
 
 from __future__ import annotations
@@ -34,8 +34,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Windows: konsol default (cp1252) tidak bisa mencetak karakter non-ASCII dan
-# akan crash. Paksa UTF-8 sebelum apa pun dicetak.
+# Windows: the default console (cp1252) cannot print non-ASCII characters and
+# will crash. Force UTF-8 before anything is printed.
 for _stream in (sys.stdout, sys.stderr):
     try:
         _stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
@@ -58,20 +58,20 @@ def main() -> int:
     parser.add_argument(
         "--file",
         default=str(DEFAULT_FILE),
-        help="file submission yang diperiksa (default: results/DeculGirl.csv)",
+        help="submission file to check (default: results/DeculGirl.csv)",
     )
     parser.add_argument(
         "--bootstrap",
         type=int,
         default=0,
         metavar="N",
-        help="jumlah draw bootstrap untuk interval kepercayaan (mis. 1000)",
+        help="number of bootstrap draws for the confidence interval (e.g. 1000)",
     )
     args = parser.parse_args()
 
     if not (OFFICIAL / "evaluation" / "run_evaluation.py").exists():
         print(
-            "Repo resmi belum ada.\n\n  python tools/fetch_official.py\n",
+            "The official repo is not present yet.\n\n  python tools/fetch_official.py\n",
             file=sys.stderr,
         )
         return 1
@@ -79,42 +79,42 @@ def main() -> int:
     submission = Path(args.file).resolve()
     if not submission.exists():
         print(
-            f"File submission tidak ada: {submission}\n\n  python run.py\n",
+            f"Submission file not found: {submission}\n\n  python run.py\n",
             file=sys.stderr,
         )
         return 1
 
-    # 1. Validasi -- pakai fungsi yang persis sama dengan scorer resmi.
-    print(f"=== 1/2  VALIDASI  {submission.name} ===\n")
+    # 1. Validation -- the exact same function the official scorer uses.
+    print(f"=== 1/2  VALIDATION  {submission.name} ===\n")
     rc = _run(
         [sys.executable, "evaluation/validate_submission.py", str(submission)],
         cwd=OFFICIAL,
     )
     if rc != 0:
         print(
-            "\nVALIDASI GAGAL. File ini akan dinilai NOL kalau "
-            "disubmit.\nKontrak filenya ada di SUBMISSION.md; penyebab paling "
-            "umum adalah off-by-one di awal/akhir file, header hilang, dan sel "
-            "kosong yang seharusnya berisi 'X'.",
+            "\nVALIDATION FAILED. This file would be scored ZERO if "
+            "submitted.\nThe file contract is in SUBMISSION.md; the most common "
+            "causes are an off-by-one at the start or end of the file, a "
+            "missing header, and empty cells that should contain 'X'.",
             file=sys.stderr,
         )
         return rc
 
-    # 2. Skor. Scorer membaca semua *.csv di evaluation/results/.
+    # 2. Score. The scorer reads every *.csv in evaluation/results/.
     results_dir = OFFICIAL / "evaluation" / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(submission, results_dir / submission.name)
 
-    print("\n=== 2/2  SKOR  (5 menit ground truth publik) ===\n")
+    print("\n=== 2/2  SCORE  (5 minutes of public ground truth) ===\n")
     cmd = [sys.executable, "evaluation/run_evaluation.py"]
     if args.bootstrap:
         cmd += ["--bootstrap", str(args.bootstrap)]
     rc = _run(cmd, cwd=OFFICIAL)
 
     print(
-        "\nLantai yang harus dilewati: spellF1 0,2433 pada pertandingan penuh "
-        "(baseline_smooth50).\nAngka di atas berasal dari 17 possession -- 1 "
-        "possession meleset ~ 6 poin. Bukan leaderboard."
+        "\nThe floor to beat: spellF1 0.2433 on the full match "
+        "(baseline_smooth50).\nThe numbers above come from 17 possessions -- 1 "
+        "missed possession ~ 6 points. This is not a leaderboard."
     )
     return rc
 

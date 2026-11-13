@@ -1,41 +1,32 @@
-# --- Data pertandingan: TIDAK PERNAH DI-COMMIT ---------------------------------
-# Bundle dilisensikan hanya untuk kompetisi ini. Menyebarkannya melanggar ToU.
+# --- Match data: NEVER COMMITTED ---------------------------------------------
+# The bundle is licensed for this competition only. Distributing it violates
+# the ToU.
 data/
 src/tactical/
 *.mp4
 *.crdownload
 
-# --- Output: bisa direproduksi, jadi tidak perlu di-commit -------------------
-# Yang dijanjikan bukan file-nya ada di repo, tapi repo-nya BISA menghasilkan
-# file itu persis. Repo resmi juga mengabaikan CSV hasilnya.
+# --- Output: reproducible, so no need to commit ------------------------------
+# What is promised is not that the file sits in the repo, but that the repo CAN
+# produce that exact file. The official repo also ignores its result CSVs.
 #
-# SEMUA .csv diabaikan, bukan cuma results/ -- ini pengaman ToU. Kalau kalian
-# memang butuh meng-commit CSV kecil yang aman (mis. tabel referensi tanpa isi
-# data pertandingan), paksa dengan:  git add -f namafile.csv
-# dan tulis alasannya di docs/decisions.md.
+# ALL .csv files are ignored, not just results/ -- this is a ToU safeguard. If
+# you really need to commit a small, safe CSV (e.g. a reference table with no
+# match data in it), force it with:  git add -f name.csv
+# and write the reason in docs/decisions.md.
 results/
 *.csv
 
-# --- Repo resmi hasil fetch: diambil ulang oleh tools/fetch_official.py ------
-# Di-pin ke commit tertentu, jadi tidak perlu disimpan.
+# --- Official repo, fetched again by tools/fetch_official.py -----------------
+# Pinned to a specific commit, so there is no need to store it.
 third_party/
 
-# --- Catatan internal -------------------------------------------------------
-# Berisi data pribadi anggota tim. JANGAN pernah masuk repo publik.
-team-research.md
+# --- Local notes -------------------------------------------------------------
 local/
 notes/
-
-# --- Perkakas lokal ---------------------------------------------------------
-# Konfigurasi asisten/AI dan editor yang dipakai di laptop masing-masing.
-# Ada di sini karena ini pernah ketangkap ikut ter-stage. Repo ini publik.
-.commandcode/
-.cursor/
-.aider*
-.windsurf/
 *.log
 
-# --- Python -----------------------------------------------------------------
+# --- Python ------------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
@@ -56,8 +47,8 @@ env/
 htmlcov/
 
 # --- Jupyter -----------------------------------------------------------------
-# Notebook TIDAK di-commit dalam keadaan sudah dijalankan: outputnya bisa
-# memuat isi data pertandingan, dan repo ini publik.
+# Notebooks are NOT committed once they have been run: their output can contain
+# match data, and this repo will be pushed.
 *.ipynb
 
 # --- OS / editor -------------------------------------------------------------
