@@ -13,7 +13,8 @@ A rule-based pipeline with no learned model and no training. It labels every vid
 recording `H`, `A`, `D` or `X` using **only the automatic tracking** (ATD). Possession is a state that persists:
 a team gets the ball on evidence, and keeps it until evidence from the other team or a dead ball. Dead ball is
 decided by five independent layers. Every parameter is a stated football or physics assumption, not a value
-fitted to the match, its public ground truth or its video.
+optimised against the match, its public ground truth or its video. The public ground truth did inform the layers
+and the order of magnitude of the speed thresholds; section 7 says exactly how.
 
 It is **not proven to be more accurate than the organisers' baseline** on the full match. What is shown, and what
 is not, is in sections 7 and 8.
@@ -61,7 +62,7 @@ runs per half, 341 possessions.
 
 ## 4. Training data
 
-None. No labelled dataset was used and nothing was trained, tuned or calibrated on the provided game, its ground
+None. No labelled dataset was used and nothing was trained or optimised on the provided game, its ground
 truth or its video.
 
 ## 5. Possession rules implemented
@@ -98,10 +99,18 @@ truth (descriptive statistics, section 7), and the first thresholds were revised
 
 ## 7. Use of the public ground truth
 
-The 5-minute public file was used to check that the pipeline runs end to end and, once, to read how the tracking
-behaves in its four dead-ball blocks (ball detected 66% of the time in `D` against 100% / 85% in `H` / `A`; median
-player speed 1.19 m/s in `D` against 2.05 / 2.47; nearest player to the ball 2.9 m against 1.6 / 1.7). That
-reading motivated the layers; it did not set the thresholds. No version was selected from its score.
+The 5-minute public file was used several times: to check that the pipeline runs end to end, to read how the
+tracking behaves in its four dead-ball blocks, and to score each version of the pipeline and read its per-class
+precision and recall. What the blocks showed: ball detected 66% of the time in `D` against 100% / 85% in `H` / `A`;
+median player speed 1.19 m/s in `D` against 2.05 / 2.47 (taken from the speed column of the tracking file, not from
+our own estimate); nearest player to the ball 2.9 m against 1.6 / 1.7.
+
+That reading informed the layers and the order of magnitude of the speed thresholds, which were set below the
+speeds seen in those blocks. The thresholds were not optimised against the ground truth or its score, and the one
+revision made (the first quiet-team threshold, section 3) was triggered by the share of `D` looking too large
+(27.7% of graded frames, against about 20% in the public window), then justified from the distribution of the
+tracking itself. No version was selected from its score, and the dead-ball recall problem it exposed (0.07) was
+left as it is rather than fixed by fitting the four blocks.
 
 Public check (17 possessions, too few to rank on): spellF1 **0.3758**, macroF1 0.5600 (`D` precision 0.98, recall
 0.07). The baseline scores 0.3256 and 0.6207 on the same window. The scorer's own bootstrap states that gaps below
