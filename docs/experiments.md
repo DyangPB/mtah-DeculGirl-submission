@@ -98,6 +98,119 @@ for ball-missing gaps inside the graded frames (possession rules R-5.1) is not i
 
 ---
 
+## Entry 2 — looking at the dead ball in tracking · 16 November 2026
+
+**Status:** analysis only. No label has been changed yet, so `results/DeculGirl.csv` is still identical to
+`baseline_smooth50` on every graded frame.
+
+**Hypothesis (written before the numbers):** a dead ball shows up in the tracking as a slow ball, players
+who move slowly, and a ball that is far from every player. A detector built on those signals, instead of on
+"the ball was lost for 4 seconds", will raise `D` recall above the baseline's 0.21–0.34.
+
+**What was looked at:** the 4 `D` blocks of the public GT (frames 12851–12988, 15889–16399, 17380–17837,
+18027–18388; 1,469 frames) against the `H` and `A` frames of the same 5 minutes. Tracking only, no video.
+Script kept outside the repo; the loader is `src/deculgirl/features/tracking.py`.
+
+| Signal | `H` | `A` | `D` |
+|---|---|---|---|
+| Ball detected | 100% | 85% | **66%** |
+| Ball outside the pitch (given detected) | 0% | 0% | **11%** |
+| Ball speed from positions, median m/s | 5.3 | 6.6 | **2.7** |
+| Nearest player to ball, median m | 1.6 | 1.7 | **2.9** |
+| Mean player speed, median m/s | 2.05 | 2.47 | **1.19** |
+
+**Findings:**
+
+1. **The ball-speed column of the file is almost empty.** It exists in 1.2% of detected ball frames inside
+   the graded ranges (8.7% over the whole match). The hypothesis in Entry 0 ("read the ball speed, third
+   column") cannot be used as written. Ball speed has to be computed from positions between frames.
+   The player speed column is present in only 37% of slots, so player speed is also best recomputed.
+2. **The four `D` blocks do not look alike.** Block 1 (138 frames) and block 3 (458) have the ball missing
+   most of the time (7% and 20% detected). Block 2 (511) has it detected 100% of the time, slow
+   (median 2.8 m/s), inside the pitch. Block 4 (362) has it detected 100% of the time but 28% outside the
+   pitch. One rule will not catch all four.
+3. **Player speed separates `D` from `H`/`A` most cleanly** (1.19 vs 2.05 / 2.47 m/s), except block 4,
+   where it is 2.18.
+4. With only 4 blocks, these numbers describe the window, they do not calibrate a threshold. Thresholds
+   must come from a stated source (R-2.2, parameter table), not from fitting these four blocks.
+
+**Verdict:** ⏳ open. Next: write the detector with thresholds from possession-rules R-2.2, then score it.
+
+---
+
+## Entry 3 — own pipeline (variant, not wired into `build_labels`) · 16 November 2026
+
+**Hypothesis (written before running):** a possession state machine (R-3/R-4/R-5) plus a layered dead-ball
+detector (R-2) built only from tracking will beat `baseline_smooth50`, because it removes the baseline's
+`D`-means-"ball lost" error and the frame-to-frame flicker of "nearest player wins".
+**What changed:** new files only. `src/deculgirl/features/dead_ball.py`, `src/deculgirl/model/possession.py`,
+`src/deculgirl/own.py`, `tools/make_own.py`. `submit.build_labels()` and `run.py` are untouched; the output is
+`results/DeculGirl_own.csv`. Code freeze (decision 006) was on 14 Nov: this is a separate variant on purpose.
+**Command:** `python tools/make_own.py` then `python tools/gate0.py --file results/DeculGirl_own.csv`
+
+Dead-ball layers on graded frames (share of 158,857, each layer alone): prekick (FAQ) 1.8% · out of pitch 2.0%
+· ball still + slow players 1.4% · quiet team (median < 0.5 m/s for 10 s) 6.6% · all four together **11.4%**.
+
+**Correction made during the run, recorded because it is a "tried and dropped":** the first version used a quiet
+threshold of 1.0 m/s and a ball-still threshold of 1.5 m/s on the team median speed. That gave `D` = 27.7% of
+graded frames. The cause was my assumption, not the speed estimate (it matches the file's own speed column,
+ratio 0.95): the median speed of all tracked players is ~1.35 m/s through the graded halves, so 28% of graded
+frames are already under 1.0 m/s. Thresholds were lowered to 0.5 and 1.0 using that descriptive statistic of
+the tracking only, not any ground truth.
+
+| Version | macroF1 | spellF1 | poss | dur | `D` share (graded) |
+|---|---|---|---|---|---|
+| `baseline_smooth50` | 0.6207 | 0.3256 | 26 | 10.8 s | 32% |
+| `DeculGirl_own` | 0.5600 | 0.3758 | 16 | 18.5 s | 11.4% |
+| `DeculGirl_yona` (teammate, v2) | 0.6515 | 0.4457 | 18 | 15.5 s | 15.4% |
+
+**Follow-up — `huddle` layer (added the same day).** Hypothesis: players clustered (RMS spread from the
+centroid < 16 m, the bottom ~4% of graded frames; median is ~21 m) and slower than normal play (< 1.0 m/s) for
+5 s is a celebration, substitution or gathering, i.e. a dead ball. Thresholds come from the distribution of the
+tracking itself, not from any ground truth.
+Result: alone it marks 0.6% of graded frames; added to the other four layers `D` goes from 11.4% to 11.9%
+(+795 frames). It never fires inside the public 5 minutes, so the public score is unchanged
+(spellF1 0.3758, macroF1 0.5600, `D` recall 0.07). **It does not fix the recall problem** — the dead balls in
+the public window are not clusters. Kept because it is cheap and has a stated reason; it is not the answer.
+
+**Is the difference above the noise band?** Not measurable: 17 possessions, one possession ≈ 6 points.
+**Verdict:** ⚠️ kept as a variant, not selected. It does not beat the teammate's v2 on the public window, and
+the window cannot rank anything (decision 007).
+
+---
+
+## Entry 4 — what can and cannot be shown about the own pipeline · 16 November 2026
+
+**Hypothesis:** without the answer key, the own pipeline can still be checked on structure and on agreement
+with an independent method. Checks chosen from `docs/possession-rules.md` section 6 (possession counts,
+fragments shorter than 19 frames), plus agreement with a second, independently built pipeline.
+**What changed:** nothing in the pipeline. Measurement only, over both graded halves (158,857 frames).
+**Command:** a short script over `results/DeculGirl_own.csv`, the teammate's v2 file and `baseline_smooth50.csv`;
+`python tools/gate0.py --file ... --bootstrap 1000` for the noise band.
+
+| Check (both graded halves) | `baseline_smooth50` | own | teammate v2 |
+|---|---|---|---|
+| `H`/`A` possessions | 594 | 341 | 281 |
+| Possessions shorter than 19 frames | 98 | 4 | 5 |
+| Median possession length | 4.6 s | 10.0 s | 12.2 s |
+| `D` runs · median length | 133 · 7.6 s | 62 · 5.0 s | 77 · 8.4 s |
+
+Agreement between independent pipelines, on graded frames both call live (`H` or `A`), n = 129,076:
+own vs teammate **86.6%** · own vs baseline 81.8% · teammate vs baseline 83.3%.
+`D` overlap: 13,682 of the 18,948 own `D` frames (72%) are also `D` in the teammate's file.
+
+Public 5 minutes (sanity only, decision 007): spellF1 own 0.3758, baseline 0.3256, teammate 0.4457.
+The scorer's bootstrap (1,000 draws, 17 possessions) states that gaps below about 0.33 are inside the noise,
+so none of these three scores is distinguishable from another.
+
+**What is shown:** the own pipeline removes the baseline's main defect (98 fragments under 19 frames → 4) and
+agrees with an independently built pipeline more than either agrees with the baseline.
+**What is not shown:** that it is more accurate than the baseline on the full match, or than the teammate's
+file. `D` recall on the public window is 0.07 (precision 0.98), the weak point.
+**Verdict:** ⚠️ kept as a documented independent attempt, not submitted.
+
+---
+
 ## Template for a new entry
 
 Copy this block every time you try something measurable.
