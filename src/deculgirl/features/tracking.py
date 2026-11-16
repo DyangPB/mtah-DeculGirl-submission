@@ -14,6 +14,7 @@ the 11-second parse is paid once.
 
 from __future__ import annotations
 
+import os
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,10 +24,12 @@ import numpy as np
 from .. import N_VIDEO_FRAMES
 
 ROOT = Path(__file__).resolve().parents[3]
-DATA_TACTICAL = ROOT / "data" / "tactical"
+#: Same convention as the official repo and ``submit.py``: ``MTAH_DATA_DIR`` wins, otherwise ``data/``.
+DATA_DIR = Path(os.environ.get("MTAH_DATA_DIR") or (ROOT / "data"))
+DATA_TACTICAL = DATA_DIR / "tactical"
 RAW = DATA_TACTICAL / "BAR-ATH_tactical_atd.txt"
 META = DATA_TACTICAL / "BAR-ATH_tactical_atd.xml"
-CACHE = ROOT / "data" / "cache_tracking.npz"
+CACHE = DATA_DIR / "cache_tracking.npz"
 
 PITCH = (105.3, 68.0)  # metres, same as the official repo's games.py
 FPS = 25
